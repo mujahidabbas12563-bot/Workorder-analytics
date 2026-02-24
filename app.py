@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. HIDE HEADER & MENU CSS ---
+# --- 2. HIDE HEADER, MENU & DEPLOY BUTTON ---
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;}
@@ -20,7 +20,7 @@ st.markdown("""
         footer {visibility: hidden;}
         .stDeployButton {display:none;}
         /* Hide the decoration line at the top */
-        .st-emotion-cache-zq59db {display:none !important;}
+        div[data-testid="stDecoration"] {display:none !important;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -30,13 +30,20 @@ if "authenticated" not in st.session_state:
 
 def check_password():
     if not st.session_state.authenticated:
-        col1, col2, col3 = st.columns([1, 1, 1])
+        # UI for Login Page
+        col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
             st.markdown("<br><br><br>", unsafe_allow_html=True)
-            st.markdown("<h2 style='text-align: center;'>🔐 Secure Access</h2>", unsafe_allow_html=True)
-            pwd = st.text_input("Enter Dashboard Password:", type="password")
-            if st.button("Login", use_container_width=True):
-                if pwd == "mujahid786":  # <--- Aapna password yahan change kar sakte hain
+            st.markdown("""
+                <div style="background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center;">
+                    <h2 style="color: #4a5568;">🔐 Dashboard Access</h2>
+                    <p style="color: #718096;">Please enter password to continue</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            pwd = st.text_input("Password", type="password", placeholder="Enter Password")
+            if st.button("Unlock Dashboard", use_container_width=True):
+                if pwd == "mujahid786":
                     st.session_state.authenticated = True
                     st.rerun()
                 else:
@@ -46,7 +53,8 @@ def check_password():
 
 # --- ONLY RUN THE REST OF THE CODE IF AUTHENTICATED ---
 if check_password():
-    # --- Custom CSS for Stunning Visuals (Aapka original CSS) ---
+
+    # --- Custom CSS for Stunning Visuals (AAP KA ORIGINAL CSS) ---
     st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -63,7 +71,9 @@ if check_password():
             font-size: 3.2rem;
             font-weight: 800;
             text-align: center;
+            letter-spacing: -1px;
             margin-bottom: 1rem;
+            text-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
             white-space: nowrap;
             width: 100%;
         }
@@ -88,20 +98,41 @@ if check_password():
             text-align: center;
             box-shadow: 0 20px 30px rgba(102, 126, 234, 0.3);
             color: white;
+            transition: transform 0.3s ease;
+        }
+        .metric-card:hover { transform: translateY(-5px); }
+        .metric-value { font-size: 2rem; font-weight: 700; }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 0.6rem;
+            border-radius: 60px;
+        }
+        .stTabs [aria-selected="true"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border-radius: 50px;
         }
         .footer {
             text-align: center;
             padding: 1.5rem;
             color: #6c757d;
             background: rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(10px);
             border-radius: 60px;
             margin-top: 2rem;
+        }
+        .datetime {
+            text-align: center;
+            color: #4a5568;
+            padding: 0.5rem 2rem;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 60px;
+            display: inline-block;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    # --- Helper Functions (Aapka original logic) ---
+    # --- Helper Functions (AAP KA ORIGINAL) ---
     def is_color_lot(lot):
         lot_str = str(lot).upper()
         valid_patterns = ['HUDSON', '0X', 'CROCKERY', 'OLIVE', 'BLACK', 'BLUE', 'BEIGE', 'BIANCO', 'NERO', 'GHIACCIO', 'BOSCO', 'INDACO', 'NAVY', 'TERRACOTTA'] 
@@ -112,8 +143,8 @@ if check_password():
         parts = str(lot).split('-')
         return parts[1] if len(parts) >= 2 else "N/A"
 
+    # --- Data Processing (AAP KA ORIGINAL) ---
     def process_data(df):
-        # ... (Aapka pura processing logic yahan continue hota hai)
         df.columns = df.columns.str.strip()
         df['Transaction Type'] = df['Transaction Type'].str.strip()
         df['color'] = df['Lot Number'].apply(extract_color)
@@ -121,10 +152,11 @@ if check_password():
         target_trans = ['Material issue', 'Material return', 'Product completion', 'Product return']
         color_lots_df = df[df['Lot Number'].apply(is_color_lot)].copy()
 
-        # Grid Logic
+        # 1. COLOR WISE TOTAL (GRID)
         grid_pivot = color_lots_df[color_lots_df['Transaction Type'].isin(target_trans)].pivot_table(
             index=['Transaction Type'], columns='color', values='Quantity', aggfunc='sum'
         ).fillna(0)
+
         for trans in target_trans:
             if trans not in grid_pivot.index: grid_pivot.loc[trans] = 0
         grid_pivot = grid_pivot.reindex(target_trans)
@@ -137,30 +169,43 @@ if check_password():
         final_grid['Grand Total'] = final_grid.sum(axis=1)
         final_grid = final_grid.round(0).astype(int).reset_index()
 
-        # Lot Logic
+        # 2. LOT WISE COMPARISON
         lot_pivot = color_lots_df[color_lots_df['Transaction Type'].isin(target_trans)].pivot_table(
             index='Lot Number', columns='Transaction Type', values='Quantity', aggfunc='sum'
         ).fillna(0)
+
         for col in target_trans:
             if col not in lot_pivot.columns: lot_pivot[col] = 0
-        
+
         lot_pivot['Actual Material Issued'] = lot_pivot['Material issue'] - lot_pivot['Material return'].abs()
         lot_pivot['Actual Completion'] = lot_pivot['Product completion'] - lot_pivot['Product return'].abs()
         lot_pivot['Overall Variance'] = lot_pivot['Actual Material Issued'] - lot_pivot['Actual Completion']
-        lot_res = lot_pivot.round(0).astype(int).reset_index()
-
-        # Chemical Logic
-        mask_wch = (df['Component or Resource'].str.startswith('WCH-', na=False))
-        wch_res = df[mask_wch].groupby(['Transaction Type', 'Component or Resource', 'UOM'])['Quantity'].sum().reset_index()
         
+        cols_order = ['Material issue', 'Material return', 'Actual Material Issued', 
+                      'Product completion', 'Product return', 'Actual Completion', 'Overall Variance']
+        lot_res = lot_pivot[cols_order].round(0).astype(int).reset_index()
+
+        if not lot_res.empty:
+            sums = lot_res.drop(columns='Lot Number').sum()
+            total_row = pd.DataFrame([['GRAND TOTAL'] + sums.tolist()], columns=lot_res.columns)
+            lot_res = pd.concat([lot_res, total_row], ignore_index=True)
+
+        # 3. CHEMICALS
+        mask_wch = (df['Component or Resource'].str.startswith('WCH-', na=False))
+        wch_sum = df[mask_wch].groupby(['Transaction Type', 'Component or Resource', 'UOM', 'Subinventory', 'Locator'])['Quantity'].sum().reset_index()
+        if not wch_sum.empty:
+            grand_total_wch = wch_sum[wch_sum['Transaction Type'] == 'Material issue']['Quantity'].sum() - wch_sum[wch_sum['Transaction Type'] == 'Material return']['Quantity'].abs().sum()
+            wch_res = pd.concat([wch_sum, pd.DataFrame({'Transaction Type': ['GRAND TOTAL'], 'Quantity': [grand_total_wch]})], ignore_index=True).fillna('')
+        else: wch_res = wch_sum
+
         return final_grid, lot_res, wch_res
 
     # --- Header Section ---
-    col1, col2, col3 = st.columns([1, 4, 1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown('<h1 class="gradient-title">🎯 Workorder Analytics</h1>', unsafe_allow_html=True)
         current_time = datetime.now().strftime("%B %d, %Y • %I:%M %p")
-        st.markdown(f'<div style="text-align:center;">📅 {current_time}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center;"><div class="datetime">📅 {current_time}</div></div>', unsafe_allow_html=True)
 
     # --- Sidebar ---
     with st.sidebar:
@@ -168,33 +213,58 @@ if check_password():
         st.markdown("---")
         uploaded_file = st.file_uploader("📤 **Upload Oracle XLSX**", type=['xlsx'])
         
-        if st.button("Logout"):
+        if uploaded_file:
+            st.success("✅ File loaded!")
+        
+        st.markdown("---")
+        if st.sidebar.button("🔓 Logout"):
             st.session_state.authenticated = False
             st.rerun()
 
-    # --- Main Content (Aapka pura 600 line ka logic idhar chalega) ---
+    # --- Main Content ---
     if uploaded_file:
-        with st.spinner("Processing..."):
+        with st.spinner("🔄 Processing..."):
             df_raw = pd.read_excel(uploaded_file)
             color_grid, lot_res, wch_res = process_data(df_raw)
-            
-            # (Metric Cards and Tabs go here - exactly like your old code)
-            st.success("✨ Data processed successfully!")
-            
-            t1, t2, t3 = st.tabs(["📊 Color Grid", "🔍 Lot Detail", "🧪 Chemicals"])
-            with t1:
-                st.dataframe(color_grid, use_container_width=True)
-            with t2:
-                st.dataframe(lot_res, use_container_width=True)
-            with t3:
-                st.dataframe(wch_res, use_container_width=True)
+        
+        st.markdown('<div class="success-message" style="text-align:center; background:#84fab0; padding:10px; border-radius:50px; margin-bottom:20px;">✨ Insights Ready!</div>', unsafe_allow_html=True)
+        
+        # Metrics Row
+        m1, m2, m3, m4 = st.columns(4)
+        m1.markdown(f'<div class="metric-card">📦<br><div class="metric-label">TOTAL LOTS</div><div class="metric-value">{len(lot_res)-1}</div></div>', unsafe_allow_html=True)
+        m2.markdown(f'<div class="metric-card">🎨<br><div class="metric-label">COLORS</div><div class="metric-value">{len(color_grid.columns)-2}</div></div>', unsafe_allow_html=True)
+        m3.markdown(f'<div class="metric-card">🧪<br><div class="metric-label">CHEMICALS</div><div class="metric-value">{len(wch_res)-1 if not wch_res.empty else 0}</div></div>', unsafe_allow_html=True)
+        m4.markdown(f'<div class="metric-card">📋<br><div class="metric-label">RECORDS</div><div class="metric-value">{len(df_raw)}</div></div>', unsafe_allow_html=True)
+
+        st.markdown("---")
+        
+        tab1, tab2, tab3 = st.tabs(["📊 Color Grid", "🔍 Lot Detail", "🧪 Chemicals"])
+
+        with tab1:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.subheader("🎨 Color-wise Grid View")
+            st.dataframe(color_grid, use_container_width=True, height=400)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with tab2:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.subheader("🔍 Lot-wise Comparison")
+            st.dataframe(lot_res, use_container_width=True, height=500)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with tab3:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.subheader("🧪 Chemical Usage")
+            st.dataframe(wch_res, use_container_width=True, height=400)
+            st.markdown('</div>', unsafe_allow_html=True)
+
     else:
-        # Welcome screen for Mujahid
-        st.info("👋 Welcome Mujahid! Please upload your Excel file to start.")
+        st.markdown('<div style="text-align: center; padding: 4rem; background: rgba(255,255,255,0.5); border-radius: 30px;"><h1>📊</h1><h2>Welcome Mujahid!</h2><p>Upload your Oracle file to start.</p></div>', unsafe_allow_html=True)
 
     # --- Footer ---
     st.markdown(f"""
-    <div class="footer">
-        <p>Developed By Mujahid Abbas 😎 • © {datetime.now().year}</p>
-    </div>
+        <div class="footer">
+            <p>Powered by Python • Developed By Mujahid Abbas 😎</p>
+            <p style="font-size: 0.8rem;">© {datetime.now().year} Workorder Analytics</p>
+        </div>
     """, unsafe_allow_html=True)
