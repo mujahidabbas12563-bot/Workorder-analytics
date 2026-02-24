@@ -5,7 +5,16 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 # --- Page Configuration ---
-st.set_page_config(
+st.set_page_config
+# --- Header and Menu Hiding CSS ---
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display:none;}
+    </style>
+""", unsafe_allow_html=True)(
     page_title="Workorder Analytics", 
     page_icon="🎯", 
     layout="wide",
@@ -626,4 +635,5 @@ st.markdown(
     </div>
     """,
     unsafe_allow_html=True
+
 )
